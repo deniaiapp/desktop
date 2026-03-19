@@ -14,7 +14,7 @@ concurrency:
 jobs:
   prepare-release:
     name: Prepare pre-release
-    runs-on: ubuntu-24.04-4core
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     outputs:
