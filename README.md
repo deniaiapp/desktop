@@ -14,6 +14,11 @@ in-app navigation inside the desktop shell.
 - Keeps Deni AI chat and sign-in routes inside the desktop window
 - Allows Google sign-in flow required by the hosted app
 - Opens unsupported external URLs in the system browser
+- Restores the main window size and position between launches
+- Minimizes to the system tray instead of exiting on close
+- Adds native desktop menu actions for reload, retry, history, zoom, and browser handoff
+- Surfaces native notifications for downloads, background updates, and tray behavior
+- Tracks the latest download and opens the Downloads folder from the app menu or tray
 - Provides separate stable and canary desktop bundle identifiers
 
 ## Prerequisites
@@ -58,6 +63,12 @@ The desktop shell keeps these flows inside the app:
 - Google authentication callback handling used by the hosted app
 
 Any other destination is opened in the system browser.
+
+## Desktop Behavior
+
+- Closing the main window hides it to the system tray
+- Left-clicking the tray icon restores the window
+- `Help > Check for Updates` is wired in, but it needs a release feed and signing key configuration before it can deliver production updates
 
 ## Security
 

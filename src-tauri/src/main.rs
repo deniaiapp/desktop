@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-  deni_ai_desktop_lib::run();
+    deni_ai_desktop_lib::run();
 }
