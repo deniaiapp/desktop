@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Deni AI Canary",
+  "identifier": "app.deniai.desktop.canary",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "create": false,
+        "title": "Deni AI Canary",
+        "url": "https://deniai.app/chat",
+        "width": 1440,
+        "height": 960,
+        "center": true,
+        "visible": false,
+        "resizable": true,
+        "fullscreen": false,
+        "preventOverflow": true,
+        "theme": "Dark"
+      }
+    ]
+  }
+}
