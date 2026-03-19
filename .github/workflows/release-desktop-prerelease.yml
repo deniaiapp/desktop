@@ -95,7 +95,7 @@ jobs:
             target: aarch64-unknown-linux-gnu
     runs-on: ${{ matrix.runner }}
     env:
-      CARGO_TARGET_DIR: src-tauri/target/${{ matrix.target }}
+      CARGO_TARGET_DIR: target/${{ matrix.target }}
     steps:
       - uses: actions/checkout@v4
 
