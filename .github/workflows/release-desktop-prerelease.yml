@@ -14,7 +14,7 @@ concurrency:
 jobs:
   prepare-release:
     name: Prepare pre-release
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-4core
     permissions:
       contents: write
     outputs:
@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: lts/*
 
@@ -76,19 +76,19 @@ jobs:
       matrix:
         include:
           - name: Windows x64
-            runner: windows-latest
+            runner: windows-2022-16core
             target: x86_64-pc-windows-msvc
           - name: Windows arm64
-            runner: windows-11-arm
+            runner: windows-11-arm-16core
             target: aarch64-pc-windows-msvc
           - name: macOS x64
-            runner: macos-15-intel
+            runner: macos-26-large
             target: x86_64-apple-darwin
           - name: macOS arm64
-            runner: macos-15
+            runner: macos-26-xlarge
             target: aarch64-apple-darwin
           - name: Linux x64
-            runner: ubuntu-24.04
+            runner: ubuntu-24.04-16core
             target: x86_64-unknown-linux-gnu
           - name: Linux arm64
             runner: ubuntu-24.04-arm
@@ -101,7 +101,7 @@ jobs:
         if: startsWith(matrix.runner, 'ubuntu-')
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -132,5 +132,5 @@ jobs:
           prerelease: true
           tauriScript: bunx tauri
           args: --target ${{ matrix.target }}
-          releaseAssetNamePattern: '[name]_[version]_[platform]_[arch][setup][ext]'
+          releaseAssetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
           retryAttempts: 2
