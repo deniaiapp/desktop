@@ -1,0 +1,197 @@
+name: release-desktop
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      tag_name: ${{ steps.meta.outputs.tag_name }}
+      release_id: ${{ steps.release.outputs.release_id }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: lts/*
+
+      - name: Validate tag and app versions
+        id: meta
+        shell: bash
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          TAG_VERSION="${TAG_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          CARGO_VERSION="$(awk -F'"' '/^version = "/{print $2; exit}' src-tauri/Cargo.toml)"
+          TAURI_VERSION="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+
+          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "Tag version ${TAG_VERSION} does not match package.json ${PACKAGE_VERSION}" >&2
+            exit 1
+          fi
+
+          if [[ "$TAG_VERSION" != "$CARGO_VERSION" ]]; then
+            echo "Tag version ${TAG_VERSION} does not match src-tauri/Cargo.toml ${CARGO_VERSION}" >&2
+            exit 1
+          fi
+
+          if [[ "$TAG_VERSION" != "$TAURI_VERSION" ]]; then
+            echo "Tag version ${TAG_VERSION} does not match src-tauri/tauri.conf.json ${TAURI_VERSION}" >&2
+            exit 1
+          fi
+
+          echo "version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag_name=${TAG_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Create or reuse GitHub release
+        id: release
+        uses: actions/github-script@v7
+        env:
+          TAG_NAME: ${{ steps.meta.outputs.tag_name }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = process.env.TAG_NAME;
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+
+              core.setOutput("release_id", String(existing.data.id));
+              return;
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+            }
+
+            const created = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Deni AI ${tag}`,
+              draft: false,
+              prerelease: false,
+              target_commitish: context.sha,
+              generate_release_notes: true,
+            });
+
+            core.setOutput("release_id", String(created.data.id));
+
+  build-and-upload:
+    name: Build ${{ matrix.name }}
+    needs: prepare-release
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-latest-16core
+            target: x86_64-pc-windows-msvc
+          - name: Windows arm64
+            runner: windows-11-arm-16core
+            target: aarch64-pc-windows-msvc
+          - name: macOS x64
+            runner: macos-26-large
+            target: x86_64-apple-darwin
+          - name: macOS arm64
+            runner: macos-26-xlarge
+            target: aarch64-apple-darwin
+          - name: Linux x64
+            runner: ubuntu-latest-16core
+            target: x86_64-unknown-linux-gnu
+          - name: Linux arm64
+            runner: ubuntu-latest-arm-16core
+            target: aarch64-unknown-linux-gnu
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/src-tauri/target
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PowerShell on Windows arm64
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        uses: PSModule/install-powershell@v1
+        with:
+          Version: latest
+
+      - name: Install Linux system dependencies
+        if: startsWith(matrix.runner, 'ubuntu-')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils unzip
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust stable
+        if: runner.os != 'Windows'
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Rust stable on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          RUSTUP_PERMIT_COPY_RENAME: 1
+        run: |
+          $cargoHome = if ($env:CARGO_HOME) { $env:CARGO_HOME } else { Join-Path $env:USERPROFILE '.cargo' }
+          $cargoBin = Join-Path $cargoHome 'bin'
+
+          "CARGO_HOME=$cargoHome" >> $env:GITHUB_ENV
+          $cargoBin >> $env:GITHUB_PATH
+
+          if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
+            $rustupArch = if ($env:RUNNER_ARCH -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
+            $rustupInit = Join-Path $env:RUNNER_TEMP 'rustup-init.exe'
+
+            Invoke-WebRequest "https://win.rustup.rs/$rustupArch" -OutFile $rustupInit
+            & $rustupInit --default-toolchain none --no-modify-path -y
+          }
+
+          rustup toolchain install stable --target "${{ matrix.target }}" --profile minimal --no-self-update
+          rustup default stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}-${{ matrix.runner }}
+          workspaces: ./src-tauri -> target
+
+      - name: Install JavaScript dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and upload Tauri bundle
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          releaseId: ${{ needs.prepare-release.outputs.release_id }}
+          tagName: ${{ needs.prepare-release.outputs.tag_name }}
+          releaseDraft: false
+          prerelease: false
+          tauriScript: bunx tauri
+          args: --target ${{ matrix.target }}
+          releaseAssetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
+          retryAttempts: 2
