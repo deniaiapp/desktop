@@ -99,6 +99,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install PowerShell on Windows arm64
+        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        uses: PSModule/install-powershell@v1
+        with:
+          Version: latest
+
       - name: Install Linux system dependencies
         if: startsWith(matrix.runner, 'ubuntu-')
         run: |
