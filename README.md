@@ -75,6 +75,14 @@ Any other destination is opened in the system browser.
 If you discover a vulnerability, do not open a public issue. Follow the process
 in [SECURITY.md](./SECURITY.md).
 
+## Code Signing Policy
+
+The project code signing policy is published in
+[CODE_SIGNING_POLICY.md](./CODE_SIGNING_POLICY.md).
+
+Stable Windows release artifacts are intended to be code signed through
+SignPath.io using a SignPath Foundation certificate after manual approval.
+
 ## Community
 
 - [Contributing](./CONTRIBUTING.md)
