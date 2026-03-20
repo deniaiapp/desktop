@@ -133,6 +133,7 @@ jobs:
 
           "CARGO_HOME=$cargoHome" >> $env:GITHUB_ENV
           $cargoBin >> $env:GITHUB_PATH
+          $env:PATH = "$cargoBin;$env:PATH"
 
           if (-not (Get-Command rustup -ErrorAction SilentlyContinue)) {
             $rustupArch = if ($env:RUNNER_ARCH -eq 'ARM64') { 'aarch64' } else { 'x86_64' }
@@ -142,8 +143,9 @@ jobs:
             & $rustupInit --default-toolchain none --no-modify-path -y
           }
 
-          rustup toolchain install stable --target "${{ matrix.target }}" --profile minimal --no-self-update
-          rustup default stable
+          $rustupExe = (Get-Command rustup -ErrorAction Stop).Source
+          & $rustupExe toolchain install stable --target "${{ matrix.target }}" --profile minimal --no-self-update
+          & $rustupExe default stable
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
