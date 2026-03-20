@@ -9,7 +9,10 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3MDVCMjc3NzNBMUY4MTEKUldRUitLRnpkN0lGVjZ0VVgzY1c1QVBHS0lkYVdOL01RMnFMYVFBZzdVQXZZL3czdzN2UlhFaVoK"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDU3MDVCMjc3NzNBMUY4MTEKUldRUitLRnpkN0lGVjZ0VVgzY1c1QVBHS0lkYVdOL01RMnFMYVFBZzdVQXZZL3czdzN2UlhFaVoK",
+      "endpoints": [
+        "https://desktop-updater.deniai.app"
+      ]
     }
   },
   "app": {
