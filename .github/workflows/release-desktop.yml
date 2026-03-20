@@ -125,8 +125,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install PowerShell on Windows arm64
+      - name: Detect PowerShell on Windows arm64
         if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        id: detect-pwsh
+        shell: powershell
+        run: |
+          if (Get-Command pwsh -ErrorAction SilentlyContinue) {
+            "installed=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "installed=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install PowerShell on Windows arm64
+        if: runner.os == 'Windows' && runner.arch == 'ARM64' && steps.detect-pwsh.outputs.installed != 'true'
         uses: PSModule/install-powershell@v1
         with:
           Version: latest
