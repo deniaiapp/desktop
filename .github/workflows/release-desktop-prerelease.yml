@@ -180,5 +180,5 @@ jobs:
           prerelease: true
           tauriScript: bunx tauri
           args: --target ${{ matrix.target }}
-          releaseAssetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
+          assetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
           retryAttempts: 2
