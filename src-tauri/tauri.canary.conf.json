@@ -19,7 +19,7 @@
         "label": "main",
         "create": false,
         "title": "Deni AI Canary",
-        "url": "https://deniai.app/chat",
+        "url": "https://deniai.app/",
         "width": 1440,
         "height": 960,
         "center": true,

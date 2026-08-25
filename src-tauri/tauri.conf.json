@@ -4,8 +4,8 @@
   "version": "0.1.4",
   "identifier": "app.deniai.desktop",
   "build": {
-    "devUrl": "https://deniai.app/chat",
-    "frontendDist": "https://deniai.app/chat"
+    "devUrl": "https://deniai.app/",
+    "frontendDist": "https://deniai.app/"
   },
   "plugins": {
     "updater": {
@@ -20,7 +20,7 @@
         "label": "main",
         "create": false,
         "title": "Deni AI",
-        "url": "https://deniai.app/chat",
+        "url": "https://deniai.app/",
         "width": 1440,
         "height": 960,
         "center": true,
