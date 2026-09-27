@@ -1,7 +1,7 @@
 use tauri::webview::Url;
 
 pub(crate) const APP_ORIGIN: &str = "https://deniai.app";
-pub(crate) const APP_START_URL: &str = "https://deniai.app/";
+pub(crate) const APP_START_URL: &str = "https://deniai.app/chat";
 
 pub(crate) fn default_app_url() -> Url {
     APP_START_URL
@@ -15,7 +15,8 @@ pub(crate) fn is_in_app_url(url: &Url) -> bool {
         return false;
     }
 
-    matches!(url.path(), "/" | "/chat" | "/auth/sign-in")
+    matches!(url.path(), "/" | "/home" | "/chat" | "/auth/sign-in")
+        || url.path().starts_with("/home/")
         || url.path().starts_with("/chat/")
         || url.path().starts_with("/auth/sign-in/")
 }
@@ -39,4 +40,30 @@ pub(crate) fn is_app_managed_auth_url(url: &Url) -> bool {
 
 pub(crate) fn is_allowed_url(url: &Url) -> bool {
     is_in_app_url(url) || is_app_managed_auth_url(url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn home_redirect_stays_in_app() {
+        for url in [
+            "https://deniai.app/home",
+            "https://deniai.app/home/features",
+        ] {
+            assert!(is_allowed_url(&url.parse().unwrap()));
+        }
+    }
+
+    #[test]
+    fn unrelated_routes_and_origins_still_open_externally() {
+        for url in [
+            "https://deniai.app/pricing",
+            "https://deniai.app/homepage",
+            "https://example.com/home",
+        ] {
+            assert!(!is_allowed_url(&url.parse().unwrap()));
+        }
+    }
 }

@@ -15,12 +15,12 @@ app at `https://deniai.app/chat`.
 
 ## Development Setup
 
-1. Install Bun 1.3 or later.
-2. Install the Rust toolchain.
+1. Install Node.js 24 and pnpm 12.6.0.
+2. Install Rust 1.90 or later.
 3. Install the Windows tooling required by Tauri.
 4. Ensure Microsoft WebView2 Runtime is available.
-5. Install dependencies with `bun install`.
-6. Start the app with `bun run dev`.
+5. Install dependencies with `pnpm install`.
+6. Start the app with `pnpm dev`.
 
 ## Project Notes
 
@@ -56,10 +56,10 @@ Examples:
 
 Before submitting a pull request, run the checks that match your change.
 
-- For local development: `bun run dev`
-- For build verification: `bun run build:dev`
-- For release-oriented verification: `bun run build:stable`
-- For canary packaging verification: `bun run build:canary`
+- For local development: `pnpm dev`
+- For build verification: `pnpm build:dev`
+- For release-oriented verification: `pnpm build:stable`
+- For canary packaging verification: `pnpm build:canary`
 
 If you cannot run a relevant check, note that in the pull request.
 

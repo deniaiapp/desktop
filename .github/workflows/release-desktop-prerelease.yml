@@ -9,7 +9,7 @@ on:
     paths:
       - "src-tauri/**"
       - "package.json"
-      - "bun.lock"
+      - "pnpm-lock.yaml"
       - ".github/workflows/release-desktop-prerelease.yml"
 
 concurrency:
@@ -127,10 +127,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential pkg-config libssl-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf xdg-utils unzip
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          bun-version: latest
+          node-version: 24
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Install Rust stable
         if: runner.os != 'Windows'
@@ -170,7 +173,7 @@ jobs:
           workspaces: ./src-tauri -> target
 
       - name: Install JavaScript dependencies
-        run: bun install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       - name: Build and upload Tauri bundle
         uses: tauri-apps/tauri-action@v1
@@ -183,7 +186,7 @@ jobs:
           tagName: ${{ needs.prepare-release.outputs.tag_name }}
           releaseDraft: false
           prerelease: true
-          tauriScript: bunx tauri
+          tauriScript: pnpm exec tauri
           args: --target ${{ matrix.target }}
           releaseAssetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
           retryAttempts: 2

@@ -23,27 +23,27 @@ in-app navigation inside the desktop shell.
 
 ## Prerequisites
 
-- Bun 1.3 or later
-- Rust toolchain (`rustup`, `cargo`, `rustc`)
+- Node.js 24 and pnpm 12.6.0
+- Rust 1.90 or later (`rustup`, `cargo`, `rustc`)
 - Windows build tooling for Tauri
 - Microsoft WebView2 Runtime on Windows
 
 ## Development
 
 ```bash
-bun install
-bun run dev
+pnpm install
+pnpm dev
 ```
 
 Available scripts:
 
-- `bun run start`
-- `bun run dev`
-- `bun run dev:watch`
-- `bun run build`
-- `bun run build:dev`
-- `bun run build:stable`
-- `bun run build:canary`
+- `pnpm start`
+- `pnpm dev`
+- `pnpm dev:watch`
+- `pnpm build`
+- `pnpm build:dev`
+- `pnpm build:stable`
+- `pnpm build:canary`
 
 ## Build Targets
 
@@ -56,6 +56,7 @@ The canary build can be installed alongside the stable build.
 
 The desktop shell keeps these flows inside the app:
 
+- `https://deniai.app/` and `https://deniai.app/home` (including `/home/*`)
 - `https://deniai.app/chat`
 - `https://deniai.app/chat/*`
 - `https://deniai.app/auth/sign-in`

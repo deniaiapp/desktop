@@ -4,7 +4,7 @@
 
 This repository is a small Tauri desktop shell for `https://deniai.app/chat`.
 
-- `package.json`: Bun-based developer commands
+- `package.json`: pnpm-based developer commands
 - `src-tauri/src/`: Rust application entry points (`main.rs`, `lib.rs`)
 - `src-tauri/tauri.conf.json`: stable app config
 - `src-tauri/tauri.canary.conf.json`: canary app config
@@ -15,11 +15,11 @@ There is no separate frontend app in this repo; the desktop shell loads the host
 
 ## Build, Test, and Development Commands
 
-- `bun install`: install JS-side dependencies
-- `bun run dev`: start the Tauri app in development mode
-- `bun run build:dev`: produce a debug desktop build
-- `bun run build:stable`: produce the stable release build
-- `bun run build:canary`: build the canary variant with its own bundle identifier
+- `pnpm install`: install JS-side dependencies
+- `pnpm dev`: start the Tauri app in development mode
+- `pnpm build:dev`: produce a debug desktop build
+- `pnpm build:stable`: produce the stable release build
+- `pnpm build:canary`: build the canary variant with its own bundle identifier
 
 Run commands from the repository root.
 
@@ -38,7 +38,7 @@ Use standard Rust formatting before opening a PR: `cargo fmt --manifest-path src
 
 There is no automated test suite yet. For now, contributors should verify:
 
-- the app launches with `bun run dev`
+- the app launches with `pnpm dev`
 - allowed in-app routes still stay inside the window
 - external links still open in the system browser
 - stable and canary builds both package successfully when touched

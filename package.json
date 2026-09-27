@@ -1,6 +1,7 @@
 {
   "name": "deni-ai-desktop",
-  "version": "0.2.0",
+  "version": "0.2.1",
+  "packageManager": "pnpm@12.6.0",
   "description": "Tauri desktop shell for deniai.app",
   "scripts": {
     "build": "tauri build",
@@ -12,6 +13,6 @@
     "build:stable": "tauri build"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "2.11.4"
+    "@tauri-apps/cli": "2.11.5"
   }
 }

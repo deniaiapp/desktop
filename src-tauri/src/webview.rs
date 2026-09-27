@@ -175,8 +175,13 @@ pub(crate) fn retry_current_page(app: &AppHandle) {
 
 pub(crate) fn reload_current_page(app: &AppHandle) {
     if let Some(window) = main_window(app) {
-        if window.eval("window.location.reload();").is_err() {
-            retry_current_page(app);
+        match window.url() {
+            Ok(url) if is_allowed_url(&url) => {
+                if window.reload().is_err() {
+                    retry_current_page(app);
+                }
+            }
+            _ => retry_current_page(app),
         }
     }
 }
@@ -273,12 +278,19 @@ pub(crate) fn maybe_notify_tray_behavior(app: &AppHandle) {
 }
 
 pub(crate) fn handle_navigation_event(app: &AppHandle, url: &Url) -> bool {
+    // WebView2 can navigate to about:blank while initializing. It is not an external link.
+    if url.as_str() == "about:blank" {
+        return true;
+    }
+
     if is_allowed_url(url) {
         app.state::<DesktopState>().set_current_url(url.to_string());
         return true;
     }
 
-    open_external(app, url);
+    if matches!(url.scheme(), "http" | "https") {
+        open_external(app, url);
+    }
     false
 }
 
@@ -286,7 +298,7 @@ pub(crate) fn handle_new_window_event(app: &AppHandle, url: Url) -> NewWindowRes
     if is_allowed_url(&url) {
         app.state::<DesktopState>().set_current_url(url.to_string());
         navigate_main_window(app, url);
-    } else {
+    } else if matches!(url.scheme(), "http" | "https") {
         open_external(app, &url);
     }
 
@@ -323,19 +335,24 @@ pub(crate) fn handle_download_event(app: &AppHandle, event: DownloadEvent) -> bo
 
 pub(crate) fn handle_page_load_started(window: &WebviewWindow, url: String) {
     let app_handle = window.app_handle();
-    app_handle.state::<DesktopState>().set_current_url(url);
+    if url.parse::<Url>().is_ok_and(|url| is_allowed_url(&url)) {
+        app_handle.state::<DesktopState>().set_current_url(url);
+    }
     let _ = window.set_title(&loading_title(app_handle));
 }
 
 pub(crate) fn handle_page_load_finished(window: &WebviewWindow, url: String, shown: &AtomicBool) {
     let app_handle = window.app_handle();
-    app_handle.state::<DesktopState>().set_current_url(url);
+    let allowed = url.parse::<Url>().is_ok_and(|url| is_allowed_url(&url));
+    if allowed {
+        app_handle.state::<DesktopState>().set_current_url(url);
+    }
     let _ = window.set_title(&app_title(app_handle));
     let zoom_factor = app_handle.state::<DesktopState>().zoom_factor();
     let _ = window.set_zoom(zoom_factor);
     inject_online_status_banner(window);
 
-    if !shown.swap(true, Ordering::SeqCst) {
+    if allowed && !shown.swap(true, Ordering::SeqCst) {
         show_main_window(window);
     }
 }

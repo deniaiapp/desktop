@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Deni AI",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "identifier": "app.deniai.desktop",
   "build": {
-    "devUrl": "https://deniai.app/",
-    "frontendDist": "https://deniai.app/"
+    "devUrl": "https://deniai.app/chat",
+    "frontendDist": "https://deniai.app/chat"
   },
   "plugins": {
     "updater": {
@@ -20,7 +20,7 @@
         "label": "main",
         "create": false,
         "title": "Deni AI",
-        "url": "https://deniai.app/",
+        "url": "https://deniai.app/chat",
         "width": 1440,
         "height": 960,
         "center": true,

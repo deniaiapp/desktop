@@ -13,7 +13,7 @@ use tauri::{
 };
 
 use state::{loading_title, DesktopState};
-use url_guard::{is_allowed_url, APP_START_URL};
+use url_guard::{default_app_url, is_allowed_url, APP_START_URL};
 use webview::{
     handle_download_event, handle_navigation_event, handle_new_window_event,
     handle_page_load_finished, handle_page_load_started, maybe_notify_tray_behavior,
@@ -116,10 +116,13 @@ pub fn run() {
             std::thread::spawn(move || {
                 std::thread::sleep(INITIAL_SHOW_DELAY);
 
-                if !fallback_visible.swap(true, std::sync::atomic::Ordering::SeqCst) {
-                    if let Some(window) = fallback_handle.get_webview_window(MAIN_WINDOW_LABEL) {
+                if let Some(window) = fallback_handle.get_webview_window(MAIN_WINDOW_LABEL) {
+                    if !fallback_visible.swap(true, std::sync::atomic::Ordering::SeqCst) {
                         let _ = window.set_title(&loading_title(&fallback_handle));
                         show_main_window(&window);
+                    }
+                    if !window.url().is_ok_and(|url| is_allowed_url(&url)) {
+                        navigate_main_window(&fallback_handle, default_app_url());
                     }
                 }
             });
