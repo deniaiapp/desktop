@@ -87,10 +87,10 @@ jobs:
             runner: windows-11-arm
             target: aarch64-pc-windows-msvc
           - name: macOS x64
-            runner: macos-26-large
+            runner: macos-26
             target: x86_64-apple-darwin
           - name: macOS arm64
-            runner: macos-26-xlarge
+            runner: macos-26
             target: aarch64-apple-darwin
           - name: Linux x64
             runner: ubuntu-latest
