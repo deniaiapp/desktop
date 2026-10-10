@@ -210,3 +210,33 @@ jobs:
           args: --target ${{ matrix.target }}
           releaseAssetNamePattern: "[name]_[version]_[platform]_[arch][setup][ext]"
           retryAttempts: 2
+          # latest.json is assembled once by publish-updater-json; per-job merges race.
+          uploadUpdaterJson: false
+
+  publish-updater-json:
+    name: Publish updater JSON
+    needs: [prepare-release, build-and-upload]
+    # Still publish when some platforms failed, so the ones that built can update.
+    if: ${{ !cancelled() && needs.prepare-release.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Publish latest.json from signed release assets
+        uses: actions/github-script@v9
+        env:
+          RELEASE_ID: ${{ needs.prepare-release.outputs.release_id }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const publishUpdaterJson = require(`${process.env.GITHUB_WORKSPACE}/.github/scripts/publish-updater-json.cjs`);
+            await publishUpdaterJson({
+              github,
+              context,
+              core,
+              releaseId: Number(process.env.RELEASE_ID),
+              version: process.env.VERSION,
+            });
