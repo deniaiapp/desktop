@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Remove the "Launch at Login" entry (HKCU ...\Run, value named after the product)
+  when the MSI is uninstalled. The NSIS uninstaller already does this; Tauri's MSI
+  template does not. Skipped during upgrades so the setting survives updates.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <!-- Empty on purpose: tauri.conf.json references it so this fragment gets linked. -->
+    <ComponentGroup Id="AutostartCleanup" />
+
+    <!-- Deferred actions read their command from a property named after the action. -->
+    <CustomAction
+        Id="SetRemoveAutostartEntry"
+        Property="RemoveAutostartEntry"
+        Value="&quot;[SystemFolder]reg.exe&quot; delete &quot;HKCU\Software\Microsoft\Windows\CurrentVersion\Run&quot; /v &quot;[ProductName]&quot; /f" />
+    <!-- Impersonated so HKCU is the uninstalling user's hive; ignore "value not found". -->
+    <CustomAction
+        Id="RemoveAutostartEntry"
+        BinaryKey="WixCA"
+        DllEntry="WixQuietExec"
+        Execute="deferred"
+        Impersonate="yes"
+        Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="SetRemoveAutostartEntry" Before="RemoveAutostartEntry">
+        (REMOVE = "ALL") AND NOT UPGRADINGPRODUCTCODE
+      </Custom>
+      <Custom Action="RemoveAutostartEntry" Before="InstallFinalize">
+        (REMOVE = "ALL") AND NOT UPGRADINGPRODUCTCODE
+      </Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

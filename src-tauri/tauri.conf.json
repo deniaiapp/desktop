@@ -49,6 +49,10 @@
     "windows": {
       "nsis": {
         "installerHooks": "windows/installer-hooks.nsh"
+      },
+      "wix": {
+        "fragmentPaths": ["windows/autostart-cleanup.wxs"],
+        "componentGroupRefs": ["AutostartCleanup"]
       }
     }
   }
