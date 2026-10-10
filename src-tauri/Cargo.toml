@@ -1,6 +1,6 @@
 [package]
 name = "deni-ai-desktop"
-version = "0.3.0"
+version = "0.3.1"
 description = "Tauri desktop shell for deniai.app"
 authors = ["Deni AI"]
 edition = "2021"
