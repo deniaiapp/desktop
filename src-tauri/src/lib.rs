@@ -1,4 +1,6 @@
+mod autostart;
 mod menu;
+mod shortcut;
 mod state;
 mod tray;
 mod updater;
@@ -37,7 +39,8 @@ fn handle_second_instance(app: &AppHandle, args: Vec<String>) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let window_shown = Arc::new(AtomicBool::new(false));
+    // A login-item launch starts in the tray, so treat the first show as already done.
+    let window_shown = Arc::new(AtomicBool::new(autostart::launched_by_autostart()));
 
     tauri::Builder::default()
         .plugin(
@@ -52,6 +55,8 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(autostart::build_plugin())
+        .plugin(shortcut::build_plugin())
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             handle_second_instance(app, args);
         }))
@@ -127,6 +132,7 @@ pub fn run() {
                 }
             });
 
+            shortcut::register_global_shortcuts(&app_handle);
             updater::check_for_updates(app_handle.clone(), false);
 
             Ok(())

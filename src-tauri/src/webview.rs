@@ -154,6 +154,28 @@ pub(crate) fn hide_main_window(app: &AppHandle) {
     }
 }
 
+/// Hides the main window when it is already in front; otherwise brings it up.
+pub(crate) fn toggle_main_window(app: &AppHandle) {
+    if let Some(window) = main_window(app) {
+        let in_front = window.is_visible().unwrap_or(false)
+            && window.is_focused().unwrap_or(false)
+            && !window.is_minimized().unwrap_or(false);
+
+        if in_front {
+            let _ = window.hide();
+        } else {
+            show_main_window(&window);
+        }
+    }
+}
+
+pub(crate) fn open_new_chat(app: &AppHandle) {
+    let url = default_app_url();
+    app.state::<DesktopState>().set_current_url(url.to_string());
+    navigate_main_window(app, url);
+    show_main_window_from_app(app);
+}
+
 pub(crate) fn navigate_main_window(app: &AppHandle, url: Url) {
     if let Some(window) = main_window(app) {
         if let Err(error) = window.navigate(url) {

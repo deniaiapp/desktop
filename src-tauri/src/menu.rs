@@ -3,15 +3,18 @@ use tauri::{
     AppHandle, Manager, Wry,
 };
 
+use crate::autostart::toggle_autostart;
 use crate::state::DesktopState;
+use crate::tray::sync_autostart_item;
 use crate::updater::check_for_updates;
 use crate::webview::{
     adjust_zoom, hide_main_window, navigate_history, open_current_page_in_browser,
-    open_downloads_folder, open_latest_download, reload_current_page, retry_current_page, set_zoom,
-    show_main_window_from_app,
+    open_downloads_folder, open_latest_download, open_new_chat, reload_current_page,
+    retry_current_page, set_zoom, show_main_window_from_app,
 };
 
 pub(crate) const MENU_SHOW_WINDOW: &str = "show-window";
+pub(crate) const MENU_NEW_CHAT: &str = "new-chat";
 pub(crate) const MENU_HIDE_TO_TRAY: &str = "hide-to-tray";
 pub(crate) const MENU_OPEN_IN_BROWSER: &str = "open-in-browser";
 pub(crate) const MENU_OPEN_DOWNLOADS: &str = "open-downloads";
@@ -24,6 +27,7 @@ pub(crate) const MENU_ZOOM_IN: &str = "zoom-in";
 pub(crate) const MENU_ZOOM_OUT: &str = "zoom-out";
 pub(crate) const MENU_ZOOM_RESET: &str = "zoom-reset";
 pub(crate) const MENU_CHECK_UPDATES: &str = "check-updates";
+pub(crate) const MENU_TOGGLE_AUTOSTART: &str = "toggle-autostart";
 pub(crate) const MENU_QUIT: &str = "quit";
 
 pub(crate) fn quit_app(app: &AppHandle) {
@@ -34,6 +38,7 @@ pub(crate) fn quit_app(app: &AppHandle) {
 pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
     match event.id().as_ref() {
         MENU_SHOW_WINDOW => show_main_window_from_app(app),
+        MENU_NEW_CHAT => open_new_chat(app),
         MENU_HIDE_TO_TRAY => hide_main_window(app),
         MENU_OPEN_IN_BROWSER => open_current_page_in_browser(app),
         MENU_OPEN_DOWNLOADS => open_downloads_folder(app),
@@ -46,6 +51,7 @@ pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
         MENU_ZOOM_OUT => adjust_zoom(app, -0.1),
         MENU_ZOOM_RESET => set_zoom(app, crate::state::DEFAULT_ZOOM_FACTOR),
         MENU_CHECK_UPDATES => check_for_updates(app.clone(), true),
+        MENU_TOGGLE_AUTOSTART => sync_autostart_item(app, toggle_autostart(app)),
         MENU_QUIT => quit_app(app),
         _ => {}
     }
@@ -53,6 +59,7 @@ pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
 
 pub(crate) fn build_app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     let show_window = MenuItem::with_id(app, MENU_SHOW_WINDOW, "Show Deni AI", true, None::<&str>)?;
+    let new_chat = MenuItem::with_id(app, MENU_NEW_CHAT, "New Chat", true, Some("Ctrl+N"))?;
     let hide_to_tray =
         MenuItem::with_id(app, MENU_HIDE_TO_TRAY, "Hide to Tray", true, Some("Ctrl+W"))?;
     let open_in_browser = MenuItem::with_id(
@@ -114,6 +121,8 @@ pub(crate) fn build_app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         "File",
         true,
         &[
+            &new_chat,
+            &PredefinedMenuItem::separator(app)?,
             &show_window,
             &hide_to_tray,
             &PredefinedMenuItem::separator(app)?,

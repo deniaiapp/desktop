@@ -1,12 +1,13 @@
 use tauri::{
-    menu::{Menu, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
-    AppHandle, Wry,
+    AppHandle, Manager, Wry,
 };
 
+use crate::autostart::is_autostart_enabled;
 use crate::menu::{
-    MENU_CHECK_UPDATES, MENU_OPEN_DOWNLOADS, MENU_OPEN_IN_BROWSER, MENU_OPEN_LATEST_DOWNLOAD,
-    MENU_QUIT, MENU_RELOAD, MENU_SHOW_WINDOW,
+    MENU_CHECK_UPDATES, MENU_NEW_CHAT, MENU_OPEN_DOWNLOADS, MENU_OPEN_IN_BROWSER,
+    MENU_OPEN_LATEST_DOWNLOAD, MENU_QUIT, MENU_RELOAD, MENU_SHOW_WINDOW, MENU_TOGGLE_AUTOSTART,
 };
 use crate::state::app_title;
 use crate::webview::show_main_window_from_app;
@@ -17,10 +18,21 @@ pub(crate) const TRAY_ID: &str = "main-tray";
 /// (and removes it from the system tray) once this state is dropped.
 pub(crate) struct TrayState {
     _tray: TrayIcon<Wry>,
+    autostart_item: CheckMenuItem<Wry>,
 }
 
-pub(crate) fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
+pub(crate) fn sync_autostart_item(app: &AppHandle, enabled: bool) {
+    if let Err(error) = app.state::<TrayState>().autostart_item.set_checked(enabled) {
+        eprintln!("failed to update Launch at Login item: {}", error);
+    }
+}
+
+fn build_tray_menu(
+    app: &AppHandle,
+    autostart_item: &CheckMenuItem<Wry>,
+) -> tauri::Result<Menu<Wry>> {
     let show_window = MenuItem::with_id(app, MENU_SHOW_WINDOW, "Show Deni AI", true, None::<&str>)?;
+    let new_chat = MenuItem::with_id(app, MENU_NEW_CHAT, "New Chat", true, None::<&str>)?;
     let reload = MenuItem::with_id(app, MENU_RELOAD, "Reload", true, None::<&str>)?;
     let open_in_browser = MenuItem::with_id(
         app,
@@ -56,12 +68,14 @@ pub(crate) fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
         app,
         &[
             &show_window,
+            &new_chat,
             &reload,
             &PredefinedMenuItem::separator(app)?,
             &open_in_browser,
             &open_downloads,
             &open_latest_download,
             &PredefinedMenuItem::separator(app)?,
+            autostart_item,
             &check_updates,
             &PredefinedMenuItem::separator(app)?,
             &quit,
@@ -70,7 +84,15 @@ pub(crate) fn build_tray_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
 }
 
 pub(crate) fn build_tray_state(app: &AppHandle) -> tauri::Result<TrayState> {
-    let tray_menu = build_tray_menu(app)?;
+    let autostart_item = CheckMenuItem::with_id(
+        app,
+        MENU_TOGGLE_AUTOSTART,
+        "Launch at Login",
+        true,
+        is_autostart_enabled(app),
+        None::<&str>,
+    )?;
+    let tray_menu = build_tray_menu(app, &autostart_item)?;
     let mut tray = TrayIconBuilder::with_id(TRAY_ID)
         .menu(&tray_menu)
         .tooltip(app_title(app))
@@ -82,6 +104,7 @@ pub(crate) fn build_tray_state(app: &AppHandle) -> tauri::Result<TrayState> {
 
     Ok(TrayState {
         _tray: tray.build(app)?,
+        autostart_item,
     })
 }
 
