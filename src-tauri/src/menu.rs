@@ -1,10 +1,12 @@
+use serde_json::{json, Value};
 use tauri::{
-    menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{IsMenuItem, Menu, MenuEvent, MenuItem, MenuItemKind, PredefinedMenuItem, Submenu},
     AppHandle, Manager, Wry,
 };
 
 use crate::about::open_about_window;
 use crate::autostart::toggle_autostart;
+use crate::edit::{run_edit_command, EditCommand};
 use crate::state::DesktopState;
 use crate::tray::sync_autostart_item;
 use crate::updater::check_for_updates;
@@ -32,13 +34,168 @@ pub(crate) const MENU_TOGGLE_AUTOSTART: &str = "toggle-autostart";
 pub(crate) const MENU_ABOUT: &str = "about";
 pub(crate) const MENU_QUIT: &str = "quit";
 
+/// One entry in an app menu section, shared by the native menu and the
+/// custom title bar menu.
+pub(crate) enum MenuEntry {
+    Item {
+        id: &'static str,
+        label: String,
+        accelerator: Option<&'static str>,
+    },
+    Edit(EditCommand),
+    Separator,
+}
+
+/// A top-level app menu such as File or View.
+pub(crate) struct MenuSection {
+    pub(crate) id: &'static str,
+    pub(crate) label: &'static str,
+    pub(crate) entries: Vec<MenuEntry>,
+}
+
 pub(crate) fn quit_app(app: &AppHandle) {
     app.state::<DesktopState>().mark_quitting();
     app.exit(0);
 }
 
-pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
-    match event.id().as_ref() {
+fn item(
+    id: &'static str,
+    label: impl Into<String>,
+    accelerator: Option<&'static str>,
+) -> MenuEntry {
+    MenuEntry::Item {
+        id,
+        label: label.into(),
+        accelerator,
+    }
+}
+
+pub(crate) fn app_menu_sections(app: &AppHandle) -> Vec<MenuSection> {
+    use MenuEntry::{Edit, Separator};
+
+    vec![
+        MenuSection {
+            id: "file",
+            label: "File",
+            entries: vec![
+                item(MENU_NEW_CHAT, "New Chat", Some("Ctrl+N")),
+                Separator,
+                item(MENU_SHOW_WINDOW, "Show Deni AI", None),
+                item(MENU_HIDE_TO_TRAY, "Hide to Tray", Some("Ctrl+W")),
+                Separator,
+                item(
+                    MENU_OPEN_IN_BROWSER,
+                    "Open in Browser",
+                    Some("Ctrl+Shift+O"),
+                ),
+                item(
+                    MENU_OPEN_DOWNLOADS,
+                    "Open Downloads Folder",
+                    Some("Ctrl+Shift+D"),
+                ),
+                item(
+                    MENU_OPEN_LATEST_DOWNLOAD,
+                    "Open Latest Download",
+                    Some("Ctrl+Alt+O"),
+                ),
+                Separator,
+                item(MENU_QUIT, "Quit", Some("Ctrl+Q")),
+            ],
+        },
+        MenuSection {
+            id: "edit",
+            label: "Edit",
+            entries: vec![
+                Edit(EditCommand::Undo),
+                Edit(EditCommand::Redo),
+                Separator,
+                Edit(EditCommand::Cut),
+                Edit(EditCommand::Copy),
+                Edit(EditCommand::Paste),
+                Separator,
+                Edit(EditCommand::SelectAll),
+            ],
+        },
+        MenuSection {
+            id: "view",
+            label: "View",
+            entries: vec![
+                item(MENU_NAV_BACK, "Back", Some("Alt+Left")),
+                item(MENU_NAV_FORWARD, "Forward", Some("Alt+Right")),
+                Separator,
+                item(MENU_RELOAD, "Reload", Some("Ctrl+R")),
+                item(
+                    MENU_RETRY_CONNECTION,
+                    "Retry Connection",
+                    Some("Ctrl+Shift+R"),
+                ),
+                Separator,
+                item(MENU_ZOOM_IN, "Zoom In", Some("Ctrl+=")),
+                item(MENU_ZOOM_OUT, "Zoom Out", Some("Ctrl+-")),
+                item(MENU_ZOOM_RESET, "Actual Size", Some("Ctrl+0")),
+            ],
+        },
+        MenuSection {
+            id: "help",
+            label: "Help",
+            entries: vec![
+                item(
+                    MENU_CHECK_UPDATES,
+                    "Check for Updates",
+                    Some("Ctrl+Shift+U"),
+                ),
+                Separator,
+                item(
+                    MENU_ABOUT,
+                    format!("About {}", app.package_info().name),
+                    None,
+                ),
+            ],
+        },
+    ]
+}
+
+fn menu_entry_json(entry: &MenuEntry) -> Value {
+    match entry {
+        MenuEntry::Item {
+            id,
+            label,
+            accelerator,
+        } => json!({ "type": "item", "id": id, "label": label, "accelerator": accelerator }),
+        MenuEntry::Edit(command) => json!({
+            "type": "item",
+            "id": command.id(),
+            "label": command.label(),
+            "accelerator": command.accelerator(),
+        }),
+        MenuEntry::Separator => json!({ "type": "separator" }),
+    }
+}
+
+/// The app menu as JSON, for the custom title bar menu.
+pub(crate) fn app_menu_json(app: &AppHandle) -> Value {
+    app_menu_sections(app)
+        .iter()
+        .map(|section| {
+            let entries = section
+                .entries
+                .iter()
+                .map(menu_entry_json)
+                .collect::<Vec<_>>();
+            json!({ "id": section.id, "label": section.label, "entries": entries })
+        })
+        .collect()
+}
+
+/// Runs the action behind a menu item id, coming from either the native menu
+/// or the custom title bar menu.
+pub(crate) fn run_menu_command(app: &AppHandle, id: &str) {
+    if let Some(command) = EditCommand::from_id(id) {
+        run_edit_command(app, command);
+        return;
+    }
+
+    match id {
         MENU_SHOW_WINDOW => show_main_window_from_app(app),
         MENU_NEW_CHAT => open_new_chat(app),
         MENU_HIDE_TO_TRAY => hide_main_window(app),
@@ -60,115 +217,60 @@ pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
     }
 }
 
+pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
+    run_menu_command(app, event.id().as_ref());
+}
+
+fn native_edit_item(
+    app: &AppHandle,
+    command: EditCommand,
+) -> tauri::Result<PredefinedMenuItem<Wry>> {
+    match command {
+        EditCommand::Undo => PredefinedMenuItem::undo(app, None),
+        EditCommand::Redo => PredefinedMenuItem::redo(app, None),
+        EditCommand::Cut => PredefinedMenuItem::cut(app, None),
+        EditCommand::Copy => PredefinedMenuItem::copy(app, None),
+        EditCommand::Paste => PredefinedMenuItem::paste(app, None),
+        EditCommand::SelectAll => PredefinedMenuItem::select_all(app, None),
+    }
+}
+
+fn native_menu_item(app: &AppHandle, entry: &MenuEntry) -> tauri::Result<MenuItemKind<Wry>> {
+    Ok(match entry {
+        MenuEntry::Item {
+            id,
+            label,
+            accelerator,
+        } => MenuItem::with_id(app, *id, label, true, *accelerator)?.kind(),
+        MenuEntry::Edit(command) => native_edit_item(app, *command)?.kind(),
+        MenuEntry::Separator => PredefinedMenuItem::separator(app)?.kind(),
+    })
+}
+
+fn native_submenu(app: &AppHandle, section: &MenuSection) -> tauri::Result<Submenu<Wry>> {
+    let items = section
+        .entries
+        .iter()
+        .map(|entry| native_menu_item(app, entry))
+        .collect::<tauri::Result<Vec<_>>>()?;
+    let items = items
+        .iter()
+        .map(|item| item as &dyn IsMenuItem<Wry>)
+        .collect::<Vec<_>>();
+    Submenu::with_items(app, section.label, true, &items)
+}
+
+/// Builds the native app menu. On macOS it is the regular menu bar. On
+/// Windows and Linux it stays hidden behind the custom title bar and only
+/// provides the keyboard accelerators.
 pub(crate) fn build_app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
-    let show_window = MenuItem::with_id(app, MENU_SHOW_WINDOW, "Show Deni AI", true, None::<&str>)?;
-    let new_chat = MenuItem::with_id(app, MENU_NEW_CHAT, "New Chat", true, Some("Ctrl+N"))?;
-    let hide_to_tray =
-        MenuItem::with_id(app, MENU_HIDE_TO_TRAY, "Hide to Tray", true, Some("Ctrl+W"))?;
-    let open_in_browser = MenuItem::with_id(
-        app,
-        MENU_OPEN_IN_BROWSER,
-        "Open in Browser",
-        true,
-        Some("Ctrl+Shift+O"),
-    )?;
-    let open_downloads = MenuItem::with_id(
-        app,
-        MENU_OPEN_DOWNLOADS,
-        "Open Downloads Folder",
-        true,
-        Some("Ctrl+Shift+D"),
-    )?;
-    let open_latest_download = MenuItem::with_id(
-        app,
-        MENU_OPEN_LATEST_DOWNLOAD,
-        "Open Latest Download",
-        true,
-        Some("Ctrl+Alt+O"),
-    )?;
-    let nav_back = MenuItem::with_id(app, MENU_NAV_BACK, "Back", true, Some("Alt+Left"))?;
-    let nav_forward = MenuItem::with_id(app, MENU_NAV_FORWARD, "Forward", true, Some("Alt+Right"))?;
-    let reload = MenuItem::with_id(app, MENU_RELOAD, "Reload", true, Some("Ctrl+R"))?;
-    let retry_connection = MenuItem::with_id(
-        app,
-        MENU_RETRY_CONNECTION,
-        "Retry Connection",
-        true,
-        Some("Ctrl+Shift+R"),
-    )?;
-    let zoom_in = MenuItem::with_id(app, MENU_ZOOM_IN, "Zoom In", true, Some("Ctrl+="))?;
-    let zoom_out = MenuItem::with_id(app, MENU_ZOOM_OUT, "Zoom Out", true, Some("Ctrl+-"))?;
-    let zoom_reset = MenuItem::with_id(app, MENU_ZOOM_RESET, "Actual Size", true, Some("Ctrl+0"))?;
-    let check_updates = MenuItem::with_id(
-        app,
-        MENU_CHECK_UPDATES,
-        "Check for Updates",
-        true,
-        Some("Ctrl+Shift+U"),
-    )?;
-    let quit = MenuItem::with_id(app, MENU_QUIT, "Quit", true, Some("Ctrl+Q"))?;
-
-    let about = MenuItem::with_id(
-        app,
-        MENU_ABOUT,
-        format!("About {}", app.package_info().name),
-        true,
-        None::<&str>,
-    )?;
-
-    let file_menu = Submenu::with_items(
-        app,
-        "File",
-        true,
-        &[
-            &new_chat,
-            &PredefinedMenuItem::separator(app)?,
-            &show_window,
-            &hide_to_tray,
-            &PredefinedMenuItem::separator(app)?,
-            &open_in_browser,
-            &open_downloads,
-            &open_latest_download,
-            &PredefinedMenuItem::separator(app)?,
-            &quit,
-        ],
-    )?;
-
-    let edit_menu = Submenu::with_items(
-        app,
-        "Edit",
-        true,
-        &[
-            &PredefinedMenuItem::cut(app, None)?,
-            &PredefinedMenuItem::copy(app, None)?,
-            &PredefinedMenuItem::paste(app, None)?,
-            &PredefinedMenuItem::select_all(app, None)?,
-        ],
-    )?;
-
-    let view_menu = Submenu::with_items(
-        app,
-        "View",
-        true,
-        &[
-            &nav_back,
-            &nav_forward,
-            &PredefinedMenuItem::separator(app)?,
-            &reload,
-            &retry_connection,
-            &PredefinedMenuItem::separator(app)?,
-            &zoom_in,
-            &zoom_out,
-            &zoom_reset,
-        ],
-    )?;
-
-    let help_menu = Submenu::with_items(
-        app,
-        "Help",
-        true,
-        &[&check_updates, &PredefinedMenuItem::separator(app)?, &about],
-    )?;
-
-    Menu::with_items(app, &[&file_menu, &edit_menu, &view_menu, &help_menu])
+    let submenus = app_menu_sections(app)
+        .iter()
+        .map(|section| native_submenu(app, section))
+        .collect::<tauri::Result<Vec<_>>>()?;
+    let submenus = submenus
+        .iter()
+        .map(|submenu| submenu as &dyn IsMenuItem<Wry>)
+        .collect::<Vec<_>>();
+    Menu::with_items(app, &submenus)
 }

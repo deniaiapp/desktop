@@ -9,6 +9,23 @@ pub(crate) fn default_app_url() -> Url {
         .expect("default app URL must be valid")
 }
 
+/// URL for a page served by one of the app's own custom URI schemes.
+pub(crate) fn local_scheme_url(scheme: &str, path: &str) -> Url {
+    // Windows and Android serve custom schemes from http://<scheme>.localhost.
+    let url = if cfg!(any(target_os = "windows", target_os = "android")) {
+        format!("http://{scheme}.localhost{path}")
+    } else {
+        format!("{scheme}://localhost{path}")
+    };
+    url.parse().expect("local scheme URL must be valid")
+}
+
+/// Whether `url` points at the app's own custom URI scheme `scheme`.
+pub(crate) fn is_local_scheme_origin(url: &Url, scheme: &str) -> bool {
+    let local = local_scheme_url(scheme, "/");
+    url.scheme() == local.scheme() && url.host_str() == local.host_str()
+}
+
 /// URLs that belong to the app itself and should load inside the main window.
 pub(crate) fn is_in_app_url(url: &Url) -> bool {
     if url.origin().ascii_serialization() != APP_ORIGIN {

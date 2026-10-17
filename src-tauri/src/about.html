@@ -3,19 +3,44 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="color-scheme" content="light dark" />
     <title>About {{name}}</title>
     <style>
       :root {
-        --bg: #0b1118;
+        --bg: #0a0a0a;
         --surface: rgba(255, 255, 255, 0.04);
         --surface-hover: rgba(255, 255, 255, 0.07);
         --border: rgba(255, 255, 255, 0.08);
-        --text: #f3f6fa;
-        --muted: rgba(243, 246, 250, 0.56);
+        --text: #fafafa;
+        --muted: rgba(250, 250, 250, 0.56);
         --accent-1: #58d3ff;
-        --accent-2: #1e7bff;
         --canary: #ffc857;
+        --stable: var(--accent-1);
+        --icon-border: rgba(255, 255, 255, 0.1);
+        --icon-shadow: 0 14px 32px rgba(0, 0, 0, 0.5);
+        --subtle-pill: rgba(250, 250, 250, 0.6);
+        --primary: #1e7bff;
+        --primary-hover: #3a8cff;
+        --primary-text: #ffffff;
+      }
+
+      /* Keep in sync with the window background in about.rs. */
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #ffffff;
+          --surface: rgba(0, 0, 0, 0.03);
+          --surface-hover: rgba(0, 0, 0, 0.06);
+          --border: rgba(0, 0, 0, 0.09);
+          --text: #0a0a0a;
+          --muted: rgba(10, 10, 10, 0.56);
+          --canary: #b7791f;
+          --stable: #0b7fc4;
+          --icon-border: rgba(0, 0, 0, 0.08);
+          --icon-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+          --subtle-pill: rgba(10, 10, 10, 0.55);
+          --primary: #1e6af0;
+          --primary-hover: #0f5fd8;
+        }
       }
 
       * {
@@ -33,9 +58,7 @@
         flex-direction: column;
         gap: 18px;
         padding: 28px 24px 20px;
-        background:
-          radial-gradient(420px 260px at 50% -60px, rgba(30, 123, 255, 0.28), transparent 70%),
-          var(--bg);
+        background: var(--bg);
         color: var(--text);
         font: 13px/1.5 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
           system-ui, sans-serif;
@@ -55,11 +78,9 @@
         width: 80px;
         height: 80px;
         margin-bottom: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border: 1px solid var(--icon-border);
         border-radius: 20px;
-        box-shadow:
-          0 14px 32px rgba(0, 0, 0, 0.45),
-          0 0 48px rgba(88, 211, 255, 0.12);
+        box-shadow: var(--icon-shadow);
         animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
       }
 
@@ -97,7 +118,7 @@
       }
 
       .pill[data-channel="Stable"] {
-        --pill: var(--accent-1);
+        --pill: var(--stable);
       }
 
       .pill[data-channel="Canary"] {
@@ -105,7 +126,7 @@
       }
 
       .pill.subtle {
-        --pill: rgba(243, 246, 250, 0.6);
+        --pill: var(--subtle-pill);
       }
 
       dl {
@@ -181,17 +202,17 @@
 
       button.primary {
         border-color: transparent;
-        background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
-        color: #04121f;
+        background: var(--primary);
+        color: var(--primary-text);
       }
 
       button.primary:hover {
-        background: linear-gradient(135deg, #7adcff, #3a8cff);
+        background: var(--primary-hover);
       }
 
       button:focus-visible,
       a:focus-visible {
-        outline: 2px solid var(--accent-1);
+        outline: 2px solid var(--stable);
         outline-offset: 2px;
       }
 

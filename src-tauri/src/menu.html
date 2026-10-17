@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="dark" />
+    <title>Menu</title>
+    <style>
+      :root {
+        --panel: #171717;
+        --text: #fafafa;
+        --muted: rgba(250, 250, 250, 0.5);
+        --active: rgba(255, 255, 255, 0.08);
+        --border: rgba(255, 255, 255, 0.1);
+        --separator: rgba(255, 255, 255, 0.07);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+      }
+
+      body {
+        color: var(--text);
+        font: 13px/1 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+          system-ui, sans-serif;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      /* The window is larger than the panel so the shadow has room. Keep the
+         inset in sync with PANEL_INSET in menu_popup.rs. */
+      .panel {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        width: max-content;
+        min-width: 232px;
+        padding: 5px;
+        border: 1px solid var(--border);
+        border-radius: 11px;
+        background: var(--panel);
+        box-shadow:
+          0 12px 28px rgba(0, 0, 0, 0.5),
+          0 2px 6px rgba(0, 0, 0, 0.35);
+        outline: none;
+      }
+
+      .panel.opening {
+        animation: open 120ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .item {
+        display: flex;
+        gap: 28px;
+        align-items: center;
+        justify-content: space-between;
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 7px;
+        white-space: nowrap;
+      }
+
+      .item[data-active="true"] {
+        background: var(--active);
+      }
+
+      .accelerator {
+        color: var(--muted);
+        font-size: 12px;
+        letter-spacing: 0.01em;
+      }
+
+      .separator {
+        height: 1px;
+        margin: 5px 8px;
+        background: var(--separator);
+      }
+
+      @keyframes open {
+        from {
+          opacity: 0;
+          transform: translateY(-4px);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .panel.opening {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="panel" role="menu" tabindex="-1"></div>
+
+    <script type="application/json" id="menus">{{menus}}</script>
+    <script>
+      (() => {
+        const menus = JSON.parse(document.getElementById("menus").textContent);
+        const invoke = (command, args) =>
+          window.__TAURI_INTERNALS__.invoke(command, args).catch((error) => {
+            console.error(`${command} failed`, error);
+          });
+
+        const panel = document.querySelector(".panel");
+        // Room for the shadow to the right of and below the panel.
+        const SHADOW_SPACE = 16;
+        let items = [];
+        let activeIndex = -1;
+
+        const setActive = (index) => {
+          activeIndex = index;
+          items.forEach((item, itemIndex) => {
+            item.dataset.active = String(itemIndex === index);
+          });
+        };
+
+        const activate = (item) => invoke("menu_invoke", { id: item.dataset.id });
+
+        const render = (menu) => {
+          panel.replaceChildren();
+          items = [];
+          for (const entry of menu.entries) {
+            if (entry.type === "separator") {
+              const separator = document.createElement("div");
+              separator.className = "separator";
+              separator.setAttribute("role", "separator");
+              panel.appendChild(separator);
+              continue;
+            }
+
+            const item = document.createElement("div");
+            item.className = "item";
+            item.dataset.id = entry.id;
+            item.setAttribute("role", "menuitem");
+
+            const label = document.createElement("span");
+            label.textContent = entry.label;
+            item.appendChild(label);
+
+            if (entry.accelerator) {
+              const accelerator = document.createElement("span");
+              accelerator.className = "accelerator";
+              accelerator.textContent = entry.accelerator;
+              item.appendChild(accelerator);
+            }
+
+            const index = items.length;
+            item.addEventListener("mousemove", () => {
+              if (activeIndex !== index) {
+                setActive(index);
+              }
+            });
+            item.addEventListener("mouseup", (event) => {
+              if (event.button === 0) {
+                activate(item);
+              }
+            });
+            panel.appendChild(item);
+            items.push(item);
+          }
+        };
+
+        panel.addEventListener("mouseleave", () => setActive(-1));
+
+        // A click in the shadow margin counts as a click outside the menu.
+        document.addEventListener("mousedown", (event) => {
+          if (!panel.contains(event.target)) {
+            invoke("menu_dismiss");
+          }
+        });
+
+        document.addEventListener("keydown", (event) => {
+          const count = items.length;
+          switch (event.key) {
+            case "ArrowDown":
+              setActive((activeIndex + 1) % count);
+              break;
+            case "ArrowUp":
+              setActive(activeIndex <= 0 ? count - 1 : activeIndex - 1);
+              break;
+            case "Home":
+              setActive(0);
+              break;
+            case "End":
+              setActive(count - 1);
+              break;
+            case "ArrowLeft":
+              invoke("menu_step", { delta: -1 });
+              break;
+            case "ArrowRight":
+              invoke("menu_step", { delta: 1 });
+              break;
+            case "Enter":
+            case " ":
+              if (items[activeIndex]) {
+                activate(items[activeIndex]);
+              }
+              break;
+            case "Escape":
+            case "Alt":
+              invoke("menu_dismiss");
+              break;
+            default:
+              return;
+          }
+          event.preventDefault();
+        });
+
+        document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+        window.__deniMenu = {
+          open(section, keyboard) {
+            const menu = menus.find((candidate) => candidate.id === section);
+            if (!menu) {
+              return;
+            }
+            render(menu);
+            setActive(keyboard ? 0 : -1);
+
+            panel.classList.remove("opening");
+            void panel.offsetWidth;
+            panel.classList.add("opening");
+            panel.focus();
+
+            // Offsets ignore the opening transform.
+            invoke("menu_present", {
+              section,
+              width: panel.offsetLeft + panel.offsetWidth + SHADOW_SPACE,
+              height: panel.offsetTop + panel.offsetHeight + SHADOW_SPACE,
+            });
+          },
+        };
+      })();
+    </script>
+  </body>
+</html>

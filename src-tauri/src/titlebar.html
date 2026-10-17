@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en" data-platform="{{platform}}">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="dark" />
+    <title>Title Bar</title>
+    <style>
+      :root {
+        --bg: #0a0a0a;
+        --text: #fafafa;
+        --muted: rgba(250, 250, 250, 0.6);
+        --faint: rgba(250, 250, 250, 0.38);
+        --hover: rgba(255, 255, 255, 0.07);
+        --press: rgba(255, 255, 255, 0.11);
+        --border: rgba(255, 255, 255, 0.07);
+        --accent-1: #58d3ff;
+        --accent-2: #1e7bff;
+        --canary: #ffc857;
+        --close: #c42b1c;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font: 12.5px/1 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+          system-ui, sans-serif;
+        cursor: default;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      #bar {
+        position: relative;
+        display: flex;
+        align-items: center;
+        height: 100%;
+        padding-left: 10px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      [data-platform="macos"] #bar {
+        /* Room for the traffic lights. */
+        padding-left: 78px;
+      }
+
+      .brand {
+        display: flex;
+        flex: none;
+        gap: 7px;
+        align-items: center;
+        padding: 0 6px 0 2px;
+      }
+
+      .brand img {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        pointer-events: none;
+      }
+
+      .canary {
+        padding: 2px 6px;
+        border: 1px solid color-mix(in srgb, var(--canary) 40%, transparent);
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--canary) 14%, transparent);
+        color: var(--canary);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+      }
+
+      .menus,
+      .history {
+        display: flex;
+        flex: none;
+        gap: 1px;
+        align-items: center;
+      }
+
+      button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        outline: none;
+      }
+
+      .menu-button {
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 7px;
+        color: var(--muted);
+        transition:
+          background 90ms ease,
+          color 90ms ease;
+      }
+
+      .menu-button:hover,
+      .menu-button[aria-expanded="true"] {
+        background: var(--hover);
+        color: var(--text);
+      }
+
+      .menu-button[aria-expanded="true"] {
+        background: var(--press);
+      }
+
+      .divider {
+        flex: none;
+        width: 1px;
+        height: 16px;
+        margin: 0 8px;
+        background: var(--border);
+      }
+
+      [data-platform="macos"] .divider {
+        display: none;
+      }
+
+      .icon-button {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        color: var(--muted);
+        transition:
+          background 90ms ease,
+          color 90ms ease;
+      }
+
+      .icon-button:hover {
+        background: var(--hover);
+        color: var(--text);
+      }
+
+      .icon-button:active {
+        background: var(--press);
+      }
+
+      .icon-button svg {
+        width: 16px;
+        height: 16px;
+      }
+
+      body[data-loading="true"] [data-command="reload"] svg {
+        animation: spin 900ms linear infinite;
+      }
+
+      .title {
+        flex: 1;
+        min-width: 0;
+        padding: 0 16px;
+        overflow: hidden;
+        color: var(--muted);
+        text-align: center;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .controls {
+        display: flex;
+        flex: none;
+        align-self: stretch;
+      }
+
+      [data-platform="macos"] .menus,
+      [data-platform="macos"] .controls,
+      [data-platform="macos"] .brand {
+        display: none;
+      }
+
+      [data-platform="macos"] .title {
+        /* Balance the traffic lights so the title stays centred. */
+        padding-right: 94px;
+      }
+
+      .control {
+        width: 46px;
+        height: 100%;
+        color: var(--muted);
+        transition:
+          background 90ms ease,
+          color 90ms ease;
+      }
+
+      .control svg {
+        width: 10px;
+        height: 10px;
+        overflow: visible;
+      }
+
+      /* On Windows a native overlay owns the mouse over the maximize button
+         (for Snap Layouts) and reports hover and press as data attributes. */
+      .control:hover,
+      body[data-maximize-hover="true"] .control.maximize-button {
+        background: var(--hover);
+        color: var(--text);
+      }
+
+      .control:active,
+      body[data-maximize-pressed="true"] .control.maximize-button {
+        background: var(--press);
+      }
+
+      .control.close:hover {
+        background: var(--close);
+        color: #fff;
+      }
+
+      .control.close:active {
+        background: color-mix(in srgb, var(--close) 85%, #000);
+        color: #fff;
+      }
+
+      .control .restore,
+      body[data-maximized="true"] .control .maximize {
+        display: none;
+      }
+
+      body[data-maximized="true"] .control .restore {
+        display: block;
+      }
+
+      body[data-focused="false"] .brand,
+      body[data-focused="false"] .menu-button,
+      body[data-focused="false"] .icon-button,
+      body[data-focused="false"] .title,
+      body[data-focused="false"] .control:not(:hover, .maximize-button),
+      body[data-focused="false"][data-maximize-hover="false"] .control.maximize-button:not(:hover) {
+        color: var(--faint);
+      }
+
+      body[data-focused="false"] .brand img {
+        opacity: 0.55;
+      }
+
+      .progress {
+        position: absolute;
+        right: 0;
+        bottom: -1px;
+        left: 0;
+        height: 2px;
+        overflow: hidden;
+        opacity: 0;
+        transition: opacity 240ms ease;
+        pointer-events: none;
+      }
+
+      body[data-loading="true"] .progress {
+        opacity: 1;
+      }
+
+      .progress::before {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 36%;
+        border-radius: 2px;
+        background: linear-gradient(90deg, transparent, var(--accent-1), var(--accent-2), transparent);
+        content: "";
+        animation: sweep 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+      }
+
+      @keyframes sweep {
+        from {
+          left: -36%;
+        }
+
+        to {
+          left: 100%;
+        }
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          transition: none !important;
+        }
+
+        body[data-loading="true"] [data-command="reload"] svg,
+        .progress::before {
+          animation: none;
+        }
+
+        .progress::before {
+          left: 0;
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body
+    data-focused="true"
+    data-maximized="false"
+    data-loading="true"
+    data-maximize-hover="false"
+    data-maximize-pressed="false"
+  >
+    <header id="bar">
+      <div class="brand">
+        <img src="/icon.svg" alt="" draggable="false" />
+      </div>
+
+      <nav class="menus" role="menubar" aria-label="Application menu"></nav>
+
+      <div class="divider"></div>
+
+      <div class="history">
+        <button type="button" class="icon-button" data-command="nav-back" title="Back (Alt+Left)" aria-label="Back">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 3.5 5.5 8l4.5 4.5" />
+          </svg>
+        </button>
+        <button type="button" class="icon-button" data-command="nav-forward" title="Forward (Alt+Right)" aria-label="Forward">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3.5 10.5 8 6 12.5" />
+          </svg>
+        </button>
+        <button type="button" class="icon-button" data-command="reload" title="Reload (Ctrl+R)" aria-label="Reload">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13 8a5 5 0 1 1-1.46-3.54" />
+            <path d="M13 2.75v2.5h-2.5" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="title" id="title"></div>
+
+      <div class="controls">
+        <button type="button" class="control" data-window="minimize" title="Minimize" aria-label="Minimize">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M0 5.5h10" />
+          </svg>
+        </button>
+        <button type="button" class="control maximize-button" data-window="toggle-maximize" title="Maximize" aria-label="Maximize">
+          <svg class="maximize" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="0.5" y="0.5" width="9" height="9" rx="1.5" />
+          </svg>
+          <svg class="restore" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1">
+            <rect x="0.5" y="2.5" width="7" height="7" rx="1.25" />
+            <path d="M2.5 2.5v-.5a1.5 1.5 0 0 1 1.5-1.5h4a1.5 1.5 0 0 1 1.5 1.5v4a1.5 1.5 0 0 1-1.5 1.5h-.5" />
+          </svg>
+        </button>
+        <button type="button" class="control close" data-window="close" title="Close" aria-label="Close">
+          <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round">
+            <path d="m.5.5 9 9m0-9-9 9" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="progress" aria-hidden="true"></div>
+    </header>
+
+    <script type="application/json" id="config">{{config}}</script>
+    <script>
+      (() => {
+        const config = JSON.parse(document.getElementById("config").textContent);
+        const invoke = (command, args) =>
+          window.__TAURI_INTERNALS__.invoke(command, args).catch((error) => {
+            console.error(`${command} failed`, error);
+          });
+
+        const body = document.body;
+        const menus = document.querySelector(".menus");
+        const title = document.getElementById("title");
+        const maximizeButton = document.querySelector('[data-window="toggle-maximize"]');
+        let state = { activeMenu: null, title: "" };
+
+        if (config.canary) {
+          const pill = document.createElement("span");
+          pill.className = "canary";
+          pill.textContent = "CANARY";
+          document.querySelector(".brand").appendChild(pill);
+        }
+
+        const menuButtons = config.menus.map((menu) => {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "menu-button";
+          button.textContent = menu.label;
+          button.dataset.menu = menu.id;
+          button.setAttribute("role", "menuitem");
+          button.setAttribute("aria-haspopup", "menu");
+          button.setAttribute("aria-expanded", "false");
+          menus.appendChild(button);
+          return button;
+        });
+
+        const openMenu = (button, keyboard = false) => {
+          const rect = button.getBoundingClientRect();
+          invoke("menu_open", {
+            section: button.dataset.menu,
+            x: rect.left,
+            y: rect.bottom,
+            keyboard,
+          });
+        };
+
+        for (const button of menuButtons) {
+          button.addEventListener("mousedown", (event) => event.preventDefault());
+          // Open on click rather than press, once the press has finished
+          // moving focus into the title bar; otherwise that focus change can
+          // land after the menu opens and close it again.
+          button.addEventListener("click", () => openMenu(button));
+          // Slide across the bar with a menu open, like a native menu bar.
+          button.addEventListener("mouseenter", () => {
+            if (state.activeMenu && state.activeMenu !== button.dataset.menu) {
+              openMenu(button);
+            }
+          });
+        }
+
+        document.querySelectorAll("[data-command]").forEach((button) => {
+          button.addEventListener("click", () => {
+            invoke("titlebar_command", { id: button.dataset.command });
+          });
+        });
+
+        document.querySelectorAll("[data-window]").forEach((button) => {
+          button.addEventListener("click", () => {
+            invoke("titlebar_window", { action: button.dataset.window });
+          });
+        });
+
+        // Everything that is not a button drags the window.
+        document.getElementById("bar").addEventListener("mousedown", (event) => {
+          if (event.button !== 0 || event.target.closest("button")) {
+            return;
+          }
+          event.preventDefault();
+          if (event.detail === 2) {
+            invoke("titlebar_window", { action: "toggle-maximize" });
+          } else {
+            invoke("titlebar_window", { action: "drag" });
+          }
+        });
+
+        document.addEventListener("contextmenu", (event) => event.preventDefault());
+
+        const render = () => {
+          title.textContent = state.title || config.appName;
+          title.title = title.textContent;
+          for (const button of menuButtons) {
+            button.setAttribute("aria-expanded", String(button.dataset.menu === state.activeMenu));
+          }
+          const maximized = body.dataset.maximized === "true";
+          maximizeButton.title = maximized ? "Restore" : "Maximize";
+          maximizeButton.setAttribute("aria-label", maximizeButton.title);
+        };
+
+        window.__deniTitlebar = {
+          update(patch) {
+            state = { ...state, ...patch };
+            body.dataset.focused = String(state.focused ?? true);
+            body.dataset.maximized = String(state.maximized ?? false);
+            body.dataset.loading = String(state.loading ?? false);
+            body.dataset.maximizeHover = String(state.maximizeHover ?? false);
+            body.dataset.maximizePressed = String(state.maximizePressed ?? false);
+            render();
+          },
+          openAdjacent(delta) {
+            const index = menuButtons.findIndex((button) => button.dataset.menu === state.activeMenu);
+            if (index === -1) {
+              return;
+            }
+            const next = menuButtons[(index + delta + menuButtons.length) % menuButtons.length];
+            openMenu(next, true);
+          },
+        };
+
+        render();
+        invoke("titlebar_ready");
+      })();
+    </script>
+  </body>
+</html>

@@ -3,11 +3,13 @@ use std::borrow::Cow;
 use tauri::{
     http::{header, Request, Response, StatusCode},
     webview::{Url, WebviewWindowBuilder},
-    AppHandle, Manager, Theme, UriSchemeContext, WebviewUrl, Wry,
+    window::Color,
+    AppHandle, Manager, Theme, UriSchemeContext, WebviewUrl, WebviewWindow, WindowEvent, Wry,
 };
 
 use crate::autostart::is_autostart_enabled;
 use crate::updater::check_for_updates;
+use crate::url_guard::{is_local_scheme_origin, local_scheme_url};
 use crate::webview::open_external;
 
 pub(crate) const ABOUT_WINDOW_LABEL: &str = "about";
@@ -176,18 +178,11 @@ fn escape_html(value: &str) -> String {
 }
 
 fn about_url() -> Url {
-    // Windows and Android serve custom schemes from http://<scheme>.localhost.
-    let url = if cfg!(any(target_os = "windows", target_os = "android")) {
-        format!("http://{ABOUT_SCHEME}.localhost/")
-    } else {
-        format!("{ABOUT_SCHEME}://localhost/")
-    };
-    url.parse().expect("about URL must be valid")
+    local_scheme_url(ABOUT_SCHEME, "/")
 }
 
 fn is_about_origin(url: &Url) -> bool {
-    let about = about_url();
-    url.scheme() == about.scheme() && url.host_str() == about.host_str()
+    is_local_scheme_origin(url, ABOUT_SCHEME)
 }
 
 fn text_response(status: StatusCode, body: &'static str) -> Response<Cow<'static, [u8]>> {
@@ -254,6 +249,19 @@ fn handle_about_navigation(app: &AppHandle, url: &Url) -> bool {
     false
 }
 
+/// Window background behind the page, matching `--bg` in about.html so the
+/// window does not flash the other theme while the page loads.
+fn about_background(theme: Theme) -> Color {
+    match theme {
+        Theme::Light => Color(255, 255, 255, 255),
+        _ => Color(10, 10, 10, 255),
+    }
+}
+
+fn sync_about_background(window: &WebviewWindow, theme: Theme) {
+    let _ = window.set_background_color(Some(about_background(theme)));
+}
+
 pub(crate) fn open_about_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(ABOUT_WINDOW_LABEL) {
         // Reload so values such as Launch at Login reflect the current state.
@@ -277,20 +285,32 @@ pub(crate) fn open_about_window(app: &AppHandle) {
     .maximizable(false)
     .minimizable(false)
     .center()
-    .theme(Some(Theme::Dark))
-    .background_color(tauri::window::Color(11, 17, 24, 255))
+    // Follow the system light/dark setting; the page switches with it.
+    .theme(None)
+    .visible(false)
     .on_navigation(move |url| handle_about_navigation(&navigation_handle, url))
     .build();
 
-    match result {
-        // The app menu is attached to every window on Windows and Linux; the
-        // About window does not need it. On macOS the menu is app-wide.
-        #[cfg(not(target_os = "macos"))]
-        Ok(window) => {
-            let _ = window.remove_menu();
+    let window = match result {
+        Ok(window) => window,
+        Err(error) => {
+            eprintln!("failed to open About window: {}", error);
+            return;
         }
-        #[cfg(target_os = "macos")]
-        Ok(_) => {}
-        Err(error) => eprintln!("failed to open About window: {}", error),
-    }
+    };
+
+    // The app menu is attached to every window on Windows and Linux; the
+    // About window does not need it. On macOS the menu is app-wide.
+    #[cfg(not(target_os = "macos"))]
+    let _ = window.remove_menu();
+
+    sync_about_background(&window, window.theme().unwrap_or(Theme::Dark));
+    let theme_window = window.clone();
+    window.on_window_event(move |event| {
+        if let WindowEvent::ThemeChanged(theme) = event {
+            sync_about_background(&theme_window, *theme);
+        }
+    });
+    let _ = window.show();
+    let _ = window.set_focus();
 }

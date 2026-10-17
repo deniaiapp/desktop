@@ -5,15 +5,18 @@ use std::{
 
 use tauri::{
     webview::{DownloadEvent, NewWindowResponse, Url},
-    AppHandle, Manager, WebviewWindow, Wry,
+    AppHandle, Manager, Webview, Window, Wry,
 };
 use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
 use crate::state::{app_title, loading_title, DesktopState};
+use crate::titlebar::set_page_loading;
 use crate::url_guard::{default_app_url, is_allowed_url};
 
 pub(crate) const MAIN_WINDOW_LABEL: &str = "main";
+/// The webview inside the main window that hosts the chat site.
+pub(crate) const CONTENT_WEBVIEW_LABEL: &str = "content";
 pub(crate) const INITIAL_SHOW_DELAY: Duration = Duration::from_secs(4);
 
 const ONLINE_STATUS_SCRIPT: &str = r#"
@@ -129,11 +132,25 @@ pub(crate) fn open_external(app: &AppHandle, url: &Url) {
     }
 }
 
-pub(crate) fn main_window(app: &AppHandle) -> Option<WebviewWindow> {
-    app.get_webview_window(MAIN_WINDOW_LABEL)
+pub(crate) fn main_window(app: &AppHandle) -> Option<Window> {
+    app.get_window(MAIN_WINDOW_LABEL)
 }
 
-pub(crate) fn show_main_window(window: &WebviewWindow) {
+pub(crate) fn content_webview(app: &AppHandle) -> Option<Webview> {
+    app.get_webview(CONTENT_WEBVIEW_LABEL)
+}
+
+/// Moves keyboard focus to the chat page, e.g. after using the title bar.
+pub(crate) fn focus_content(app: &AppHandle) {
+    if let Some(window) = main_window(app) {
+        let _ = window.set_focus();
+    }
+    if let Some(webview) = content_webview(app) {
+        let _ = webview.set_focus();
+    }
+}
+
+pub(crate) fn show_main_window(window: &Window) {
     if window.is_minimized().unwrap_or(false) {
         let _ = window.unminimize();
     }
@@ -177,8 +194,8 @@ pub(crate) fn open_new_chat(app: &AppHandle) {
 }
 
 pub(crate) fn navigate_main_window(app: &AppHandle, url: Url) {
-    if let Some(window) = main_window(app) {
-        if let Err(error) = window.navigate(url) {
+    if let Some(webview) = content_webview(app) {
+        if let Err(error) = webview.navigate(url) {
             eprintln!("failed to navigate main window: {}", error);
         }
     }
@@ -196,10 +213,10 @@ pub(crate) fn retry_current_page(app: &AppHandle) {
 }
 
 pub(crate) fn reload_current_page(app: &AppHandle) {
-    if let Some(window) = main_window(app) {
-        match window.url() {
+    if let Some(webview) = content_webview(app) {
+        match webview.url() {
             Ok(url) if is_allowed_url(&url) => {
-                if window.reload().is_err() {
+                if webview.reload().is_err() {
                     retry_current_page(app);
                 }
             }
@@ -209,13 +226,13 @@ pub(crate) fn reload_current_page(app: &AppHandle) {
 }
 
 pub(crate) fn navigate_history(app: &AppHandle, direction: &str) {
-    if let Some(window) = main_window(app) {
+    if let Some(webview) = content_webview(app) {
         let script = match direction {
             "back" => "window.history.back();",
             "forward" => "window.history.forward();",
             _ => return,
         };
-        let _ = window.eval(script);
+        let _ = webview.eval(script);
     }
 }
 
@@ -224,8 +241,8 @@ pub(crate) fn set_zoom(app: &AppHandle, zoom_factor: f64) {
         zoom_factor.clamp(crate::state::MIN_ZOOM_FACTOR, crate::state::MAX_ZOOM_FACTOR);
     app.state::<DesktopState>().set_zoom_factor(zoom_factor);
 
-    if let Some(window) = main_window(app) {
-        if let Err(error) = window.set_zoom(zoom_factor) {
+    if let Some(webview) = content_webview(app) {
+        if let Err(error) = webview.set_zoom(zoom_factor) {
             eprintln!("failed to set zoom factor: {}", error);
         }
     }
@@ -282,8 +299,8 @@ pub(crate) fn open_latest_download(app: &AppHandle) {
     }
 }
 
-pub(crate) fn inject_online_status_banner(window: &WebviewWindow) {
-    if let Err(error) = window.eval(ONLINE_STATUS_SCRIPT) {
+pub(crate) fn inject_online_status_banner(webview: &Webview) {
+    if let Err(error) = webview.eval(ONLINE_STATUS_SCRIPT) {
         eprintln!("failed to inject online status banner: {}", error);
     }
 }
@@ -355,26 +372,29 @@ pub(crate) fn handle_download_event(app: &AppHandle, event: DownloadEvent) -> bo
     true
 }
 
-pub(crate) fn handle_page_load_started(window: &WebviewWindow, url: String) {
-    let app_handle = window.app_handle();
+pub(crate) fn handle_page_load_started(webview: &Webview, url: String) {
+    let app_handle = webview.app_handle();
     if url.parse::<Url>().is_ok_and(|url| is_allowed_url(&url)) {
         app_handle.state::<DesktopState>().set_current_url(url);
     }
-    let _ = window.set_title(&loading_title(app_handle));
+    let _ = webview.window().set_title(&loading_title(app_handle));
+    set_page_loading(app_handle, true);
 }
 
-pub(crate) fn handle_page_load_finished(window: &WebviewWindow, url: String, shown: &AtomicBool) {
-    let app_handle = window.app_handle();
+pub(crate) fn handle_page_load_finished(webview: &Webview, url: String, shown: &AtomicBool) {
+    let app_handle = webview.app_handle();
     let allowed = url.parse::<Url>().is_ok_and(|url| is_allowed_url(&url));
     if allowed {
         app_handle.state::<DesktopState>().set_current_url(url);
     }
+    let window = webview.window();
     let _ = window.set_title(&app_title(app_handle));
+    set_page_loading(app_handle, false);
     let zoom_factor = app_handle.state::<DesktopState>().zoom_factor();
-    let _ = window.set_zoom(zoom_factor);
-    inject_online_status_banner(window);
+    let _ = webview.set_zoom(zoom_factor);
+    inject_online_status_banner(webview);
 
     if allowed && !shown.swap(true, Ordering::SeqCst) {
-        show_main_window(window);
+        show_main_window(&window);
     }
 }
