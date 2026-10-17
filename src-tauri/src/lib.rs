@@ -1,3 +1,4 @@
+mod about;
 mod autostart;
 mod menu;
 mod shortcut;
@@ -50,6 +51,7 @@ pub fn run() {
                         | tauri_plugin_window_state::StateFlags::POSITION
                         | tauri_plugin_window_state::StateFlags::MAXIMIZED,
                 )
+                .with_denylist(&[about::ABOUT_WINDOW_LABEL])
                 .build(),
         )
         .plugin(tauri_plugin_notification::init())
@@ -60,6 +62,7 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             handle_second_instance(app, args);
         }))
+        .register_uri_scheme_protocol(about::ABOUT_SCHEME, about::handle_about_protocol)
         .menu(menu::build_app_menu)
         .on_menu_event(menu::handle_menu_event)
         .on_tray_icon_event(tray::handle_tray_icon_event)

@@ -1,8 +1,9 @@
 use tauri::{
-    menu::{AboutMetadataBuilder, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
+    menu::{Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
     AppHandle, Manager, Wry,
 };
 
+use crate::about::open_about_window;
 use crate::autostart::toggle_autostart;
 use crate::state::DesktopState;
 use crate::tray::sync_autostart_item;
@@ -28,6 +29,7 @@ pub(crate) const MENU_ZOOM_OUT: &str = "zoom-out";
 pub(crate) const MENU_ZOOM_RESET: &str = "zoom-reset";
 pub(crate) const MENU_CHECK_UPDATES: &str = "check-updates";
 pub(crate) const MENU_TOGGLE_AUTOSTART: &str = "toggle-autostart";
+pub(crate) const MENU_ABOUT: &str = "about";
 pub(crate) const MENU_QUIT: &str = "quit";
 
 pub(crate) fn quit_app(app: &AppHandle) {
@@ -52,6 +54,7 @@ pub(crate) fn handle_menu_event(app: &AppHandle, event: MenuEvent) {
         MENU_ZOOM_RESET => set_zoom(app, crate::state::DEFAULT_ZOOM_FACTOR),
         MENU_CHECK_UPDATES => check_for_updates(app.clone(), true),
         MENU_TOGGLE_AUTOSTART => sync_autostart_item(app, toggle_autostart(app)),
+        MENU_ABOUT => open_about_window(app),
         MENU_QUIT => quit_app(app),
         _ => {}
     }
@@ -105,15 +108,12 @@ pub(crate) fn build_app_menu(app: &AppHandle) -> tauri::Result<Menu<Wry>> {
     )?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "Quit", true, Some("Ctrl+Q"))?;
 
-    let about = PredefinedMenuItem::about(
+    let about = MenuItem::with_id(
         app,
-        None,
-        Some(
-            AboutMetadataBuilder::new()
-                .website(Some("https://deniai.app"))
-                .website_label(Some("deniai.app"))
-                .build(),
-        ),
+        MENU_ABOUT,
+        format!("About {}", app.package_info().name),
+        true,
+        None::<&str>,
     )?;
 
     let file_menu = Submenu::with_items(

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>About {{name}}</title>
+    <style>
+      :root {
+        --bg: #0b1118;
+        --surface: rgba(255, 255, 255, 0.04);
+        --surface-hover: rgba(255, 255, 255, 0.07);
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #f3f6fa;
+        --muted: rgba(243, 246, 250, 0.56);
+        --accent-1: #58d3ff;
+        --accent-2: #1e7bff;
+        --canary: #ffc857;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding: 28px 24px 20px;
+        background:
+          radial-gradient(420px 260px at 50% -60px, rgba(30, 123, 255, 0.28), transparent 70%),
+          var(--bg);
+        color: var(--text);
+        font: 13px/1.5 "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+          system-ui, sans-serif;
+        overflow: hidden;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+      }
+
+      .icon {
+        width: 80px;
+        height: 80px;
+        margin-bottom: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        box-shadow:
+          0 14px 32px rgba(0, 0, 0, 0.45),
+          0 0 48px rgba(88, 211, 255, 0.12);
+        animation: rise 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+
+      .version {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .version strong {
+        color: var(--text);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .pill {
+        padding: 1px 8px;
+        border-radius: 999px;
+        border: 1px solid color-mix(in srgb, var(--pill) 40%, transparent);
+        background: color-mix(in srgb, var(--pill) 14%, transparent);
+        color: var(--pill);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+
+      .pill[data-channel="Stable"] {
+        --pill: var(--accent-1);
+      }
+
+      .pill[data-channel="Canary"] {
+        --pill: var(--canary);
+      }
+
+      .pill.subtle {
+        --pill: rgba(243, 246, 250, 0.6);
+      }
+
+      dl {
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        background: var(--surface);
+        overflow: hidden;
+      }
+
+      .row {
+        display: flex;
+        gap: 16px;
+        justify-content: space-between;
+        padding: 8px 14px;
+      }
+
+      .row + .row {
+        border-top: 1px solid var(--border);
+      }
+
+      dt {
+        flex: none;
+        color: var(--muted);
+      }
+
+      dd {
+        min-width: 0;
+        margin: 0;
+        overflow: hidden;
+        color: var(--text);
+        font-variant-numeric: tabular-nums;
+        text-align: right;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        user-select: text;
+        -webkit-user-select: text;
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      button {
+        height: 36px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--surface);
+        color: var(--text);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        transition:
+          background 120ms ease,
+          transform 120ms ease,
+          opacity 120ms ease;
+      }
+
+      button:hover {
+        background: var(--surface-hover);
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+
+      button.primary {
+        border-color: transparent;
+        background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+        color: #04121f;
+      }
+
+      button.primary:hover {
+        background: linear-gradient(135deg, #7adcff, #3a8cff);
+      }
+
+      button:focus-visible,
+      a:focus-visible {
+        outline: 2px solid var(--accent-1);
+        outline-offset: 2px;
+      }
+
+      footer {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        margin-top: auto;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      nav {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        justify-content: center;
+      }
+
+      a {
+        border-radius: 4px;
+        color: var(--text);
+        opacity: 0.8;
+        text-decoration: none;
+      }
+
+      a:hover {
+        opacity: 1;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
+
+      #diagnostics {
+        display: none;
+      }
+
+      @keyframes rise {
+        from {
+          opacity: 0;
+          transform: translateY(6px) scale(0.96);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .icon {
+          animation: none;
+        }
+
+        button {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <img class="icon" src="/icon.svg" alt="" draggable="false" />
+      <h1>{{name}}</h1>
+      <div class="version">
+        <span>Version <strong>{{version}}</strong></span>
+        <span class="pill" data-channel="{{channel}}">{{channel}}</span>
+        {{profile_pill}}
+      </div>
+    </header>
+
+    <dl>{{rows}}</dl>
+
+    <div class="actions">
+      <button type="button" class="primary" id="check-updates">Check for Updates</button>
+      <button type="button" id="copy-info">Copy Info</button>
+    </div>
+
+    <footer>
+      <nav>
+        <a href="https://deniai.app">Website</a>
+        <a href="{{release_notes_url}}">Release Notes</a>
+        <a href="https://github.com/deniaiapp/desktop">GitHub</a>
+        <a href="https://github.com/deniaiapp/desktop/blob/master/LICENSE.md">License</a>
+      </nav>
+      <span>{{copyright}}</span>
+    </footer>
+
+    <pre id="diagnostics">{{diagnostics}}</pre>
+
+    <script>
+      (() => {
+        const runAction = (name) => {
+          window.location.href = `/action/${name}`;
+        };
+
+        const flash = (button, label) => {
+          const original = button.dataset.label ?? button.textContent;
+          button.dataset.label = original;
+          button.textContent = label;
+          button.disabled = true;
+          window.setTimeout(() => {
+            button.textContent = original;
+            button.disabled = false;
+          }, 1600);
+        };
+
+        const copyText = async (text) => {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch {
+            const area = document.createElement("textarea");
+            area.value = text;
+            area.style.position = "fixed";
+            area.style.opacity = "0";
+            document.body.appendChild(area);
+            area.select();
+            const copied = document.execCommand("copy");
+            area.remove();
+            return copied;
+          }
+        };
+
+        const checkUpdates = document.getElementById("check-updates");
+        checkUpdates.addEventListener("click", () => {
+          flash(checkUpdates, "Checking…");
+          runAction("check-updates");
+        });
+
+        const copyInfo = document.getElementById("copy-info");
+        copyInfo.addEventListener("click", async () => {
+          const text = document.getElementById("diagnostics").textContent;
+          flash(copyInfo, (await copyText(text)) ? "Copied" : "Copy failed");
+        });
+
+        document.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            runAction("close");
+          }
+        });
+
+        document.addEventListener("contextmenu", (event) => {
+          if (!window.getSelection()?.toString()) {
+            event.preventDefault();
+          }
+        });
+      })();
+    </script>
+  </body>
+</html>
