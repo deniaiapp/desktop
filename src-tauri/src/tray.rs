@@ -6,7 +6,7 @@ use tauri::{
 
 use crate::autostart::is_autostart_enabled;
 use crate::menu::{
-    MENU_CHECK_UPDATES, MENU_NEW_CHAT, MENU_OPEN_DOWNLOADS, MENU_OPEN_IN_BROWSER,
+    MENU_ABOUT, MENU_CHECK_UPDATES, MENU_NEW_CHAT, MENU_OPEN_DOWNLOADS, MENU_OPEN_IN_BROWSER,
     MENU_OPEN_LATEST_DOWNLOAD, MENU_QUIT, MENU_RELOAD, MENU_SHOW_WINDOW, MENU_TOGGLE_AUTOSTART,
 };
 use crate::state::app_title;
@@ -62,6 +62,7 @@ fn build_tray_menu(
         true,
         None::<&str>,
     )?;
+    let about = MenuItem::with_id(app, MENU_ABOUT, "About", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, MENU_QUIT, "Quit", true, None::<&str>)?;
 
     Menu::with_items(
@@ -77,6 +78,7 @@ fn build_tray_menu(
             &PredefinedMenuItem::separator(app)?,
             autostart_item,
             &check_updates,
+            &about,
             &PredefinedMenuItem::separator(app)?,
             &quit,
         ],
